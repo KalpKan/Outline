@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		A1ABE0D32E13436C00DD7D62 /* PencilKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1ABE0D22E13436C00DD7D62 /* PencilKit.framework */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		A1ABE0B52E133ED300DD7D62 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,6 +31,7 @@
 		A1ABE0A42E133ED200DD7D62 /* Outline.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Outline.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1ABE0B42E133ED300DD7D62 /* OutlineTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OutlineTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1ABE0BE2E133ED300DD7D62 /* OutlineUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OutlineUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1ABE0D22E13436C00DD7D62 /* PencilKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = PencilKit.framework; path = System/Library/Frameworks/PencilKit.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -52,6 +57,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1ABE0D32E13436C00DD7D62 /* PencilKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +84,7 @@
 				A1ABE0A62E133ED200DD7D62 /* Outline */,
 				A1ABE0B72E133ED300DD7D62 /* OutlineTests */,
 				A1ABE0C12E133ED300DD7D62 /* OutlineUITests */,
+				A1ABE0D12E13436C00DD7D62 /* Frameworks */,
 				A1ABE0A52E133ED200DD7D62 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -90,6 +97,14 @@
 				A1ABE0BE2E133ED300DD7D62 /* OutlineUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A1ABE0D12E13436C00DD7D62 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				A1ABE0D22E13436C00DD7D62 /* PencilKit.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
