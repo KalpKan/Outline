@@ -24,6 +24,9 @@ struct ContentView: View {
     @State private var showingSessionManager: Bool = false
     @State private var trialToRename: Trial? = nil
     @State private var renameText: String = ""
+    @State private var hueRotation: Double = 0.0
+    @State private var hueAnimating: Bool = false
+    @State private var dottedCircleProgress: Double = 0.0
     
     // Template circle properties
     let templateRadius: CGFloat = 250
@@ -38,12 +41,31 @@ struct ContentView: View {
                     .cornerRadius(16)
                 
                 GeometryReader { geo in
-                    // Template circle overlay (always visible)
-                    Circle()
-                        .stroke(style: StrokeStyle(lineWidth: 2, dash: [8]))
-                        .foregroundColor(.gray.opacity(0.5))
-                        .frame(width: templateRadius * 2, height: templateRadius * 2)
-                        .position(x: geo.size.width/2, y: geo.size.height/2)
+                    // Practice phase: animated hued circle and dotted circle
+                    if session.trials.count < 5 {
+                        ZStack {
+                            // Dotted template circle, revealed in sync with animation
+                            Circle()
+                                .trim(from: 0, to: dottedCircleProgress)
+                                .stroke(style: StrokeStyle(lineWidth: 2, dash: [8]))
+                                .foregroundColor(.gray.opacity(0.5))
+                                .frame(width: templateRadius * 2, height: templateRadius * 2)
+                                .position(x: geo.size.width/2, y: geo.size.height/2)
+                                .animation(.linear(duration: 0.5), value: dottedCircleProgress)
+                            // Hued loading circle (only while animating)
+                            if showingGuideCircle && !userHasStartedDrawing && guideCircleProgress < 1.0 {
+                                Circle()
+                                    .trim(from: 0, to: guideCircleProgress)
+                                    .stroke(style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                                    .foregroundColor(.blue.opacity(0.7))
+                                    .frame(width: templateRadius * 2, height: templateRadius * 2)
+                                    .position(x: geo.size.width/2, y: geo.size.height/2)
+                                    .rotationEffect(.degrees(-90))
+                                    .hueRotation(.degrees(hueRotation))
+                                    .animation(.easeIn(duration: 0.5), value: guideCircleProgress)
+                            }
+                        }
+                    }
                     
                     // PencilKit canvas (background layer)
                     CanvasView(drawing: $drawing, tool: tool, onDrawingStarted: {
@@ -76,7 +98,8 @@ struct ContentView: View {
                             .frame(width: templateRadius * 2, height: templateRadius * 2)
                             .position(x: geo.size.width/2, y: geo.size.height/2)
                             .rotationEffect(.degrees(-90)) // Start from top
-                            .animation(.easeInOut(duration: 1.0), value: guideCircleProgress)
+                            .hueRotation(.degrees(hueRotation))
+                            .animation(.easeIn(duration: 0.5), value: guideCircleProgress)
                     }
                 }
             }
@@ -122,6 +145,7 @@ struct ContentView: View {
                             showingGuideCircle = true
                             withAnimation(.easeInOut(duration: 1.0)) {
                                 guideCircleProgress = 1.0
+                                dottedCircleProgress = 1.0
                             }
                         }
                     }
@@ -148,6 +172,7 @@ struct ContentView: View {
                         drawing = PKDrawing()
                         userHasStartedDrawing = false
                         guideCircleProgress = 0.0
+                        dottedCircleProgress = 0.0
                         showingGuideCircle = false
                     }
                     // Start guide circle animation for next trial
@@ -156,6 +181,7 @@ struct ContentView: View {
                             showingGuideCircle = true
                             withAnimation(.easeInOut(duration: 1.0)) {
                                 guideCircleProgress = 1.0
+                                dottedCircleProgress = 1.0
                             }
                         }
                     }
@@ -187,6 +213,17 @@ struct ContentView: View {
                 .buttonStyle(.bordered)
             }
             .padding()
+            // Show MSE consistency after practice phase
+            if session.trials.count >= 5, let consistency = session.mseConsistency {
+                HStack {
+                    Image(systemName: "waveform.path.ecg")
+                        .foregroundColor(.purple)
+                    Text("MSE Consistency: \(String(format: "%.1f", consistency))")
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.bottom, 8)
+            }
         }
         .sheet(isPresented: $showingExportSheet) {
             ExportSheet(session: session)
@@ -232,9 +269,13 @@ struct ContentView: View {
             // Start guide circle animation
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 showingGuideCircle = true
-                withAnimation(.easeInOut(duration: 1.0)) {
+                withAnimation(.easeIn(duration: 0.5)) {
                     guideCircleProgress = 1.0
+                    dottedCircleProgress = 1.0
                 }
+                // Start hue rotation animation
+                hueAnimating = true
+                animateHueRotation()
             }
         }
         .onChange(of: session.trials.count) { newCount in
@@ -243,6 +284,51 @@ struct ContentView: View {
                 withAnimation(.easeInOut(duration: 1.0)) {
                     ghostCircleOpacity = 0.0
                 }
+                // Stop hue rotation
+                hueAnimating = false
+            } else {
+                // Reset for next practice trial
+                guideCircleProgress = 0.0
+                dottedCircleProgress = 0.0
+                showingGuideCircle = false
+                userHasStartedDrawing = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    showingGuideCircle = true
+                    withAnimation(.easeIn(duration: 0.5)) {
+                        guideCircleProgress = 1.0
+                        dottedCircleProgress = 1.0
+                    }
+                    hueAnimating = true
+                    animateHueRotation()
+                }
+            }
+        }
+        .onChange(of: guideCircleProgress) { newValue in
+            // When the hued circle finishes, hide it but keep the dotted circle
+            if newValue >= 1.0 {
+                showingGuideCircle = false
+                hueAnimating = false
+            }
+        }
+        .onChange(of: userHasStartedDrawing) { started in
+            // If user starts drawing, immediately finish the animation and show full dotted circle
+            if started && session.trials.count < 5 {
+                guideCircleProgress = 1.0
+                dottedCircleProgress = 1.0
+                showingGuideCircle = false
+                hueAnimating = false
+            }
+        }
+    }
+    
+    func animateHueRotation() {
+        guard hueAnimating else { return }
+        withAnimation(.linear(duration: 1.0)) {
+            hueRotation += 60
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            if hueAnimating {
+                animateHueRotation()
             }
         }
     }
@@ -316,11 +402,12 @@ struct ExportSheet: UIViewControllerRepresentable {
             activityItems.append(strokeURL)
         }
         
-        // Export session metadata
+        // Export session metadata (now includes mse_consistency)
         let sessionMetadata = SessionMetadata(
             session_id: session.id.uuidString,
             created: session.created,
             fatigue_rating: session.fatigueRating,
+            mse_consistency: session.mseConsistency,
             trials: exportTrials.map { trial in
                 TrialExportMetadata(
                     trial_id: trial.metadata.trial_id,
@@ -342,11 +429,12 @@ struct ExportSheet: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
-// Session metadata for export
+// Session metadata for export (now includes mse_consistency)
 struct SessionMetadata: Codable {
     let session_id: String
     let created: Date
     let fatigue_rating: Int?
+    let mse_consistency: Double?
     let trials: [TrialExportMetadata]
 }
 

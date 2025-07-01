@@ -11,6 +11,8 @@ At the start of each session, participants are prompted to self-report their fat
 
 ## Data Collection
 
+All drawing data is collected as raw, uninterpreted user input from PencilKit. No smoothing, filtering, or assistive features are applied; the app records the user's actual drawing ability without modification.
+
 For each test trial (after the first 5 practice trials), the following data are recorded:
 
 - **Raw Stroke Points**: Each drawing is captured as a sequence of points, each with:
@@ -26,9 +28,10 @@ For each test trial (after the first 5 practice trials), the following data are 
   - `session_id`: Unique identifier for the session
   - `created`: Timestamp of session start
   - `fatigue_rating`: Self-reported fatigue score
+  - `mse_consistency`: Mean squared error of the MSEs (see below)
   - `trials`: Array of trial metadata (see above)
 
-All data are exported in JSON format, with one file per trial (raw points) and a session metadata file summarizing all trials.
+All data are exported in JSON format, with one file per trial (raw points) and a session metadata file summarizing all trials and metrics.
 
 ## Mathematical Analysis
 
@@ -45,8 +48,15 @@ All data are exported in JSON format, with one file per trial (raw points) and a
 - The MSE is then:
   - `MSE = (1/N) ∑_{i=1}^N (r_i - R)^2`, where N = 360
 
+### MSE Consistency (Mean Squared Error of the MSEs)
+- For all test trials, the MSE is computed as above.
+- The consistency metric is then:
+  - `MSE_consistency = (1/N) ∑_{i=1}^N (MSE_i - mean_MSE)^2`, where N is the number of test trials and mean_MSE is the average MSE across all test trials.
+- This metric quantifies how consistent the user's circle shapes are, regardless of whether they are the correct size.
+
 ### Pseudocode (Python/NumPy style)
 ```python
+# For each trial:
 pts = np.array([[x1, y1], [x2, y2], ...])
 pts -= pts.mean(axis=0)  # Center
 scale = target_R / np.linalg.norm(pts, axis=1).mean()
@@ -59,6 +69,11 @@ for i, ang in enumerate(angles):
     idx = np.argmin(np.abs(np.unwrap(thetas - ang)))
     r_theta[i] = radii[idx]
 mse = ((r_theta - target_R) ** 2).mean()
+
+# For the session:
+mses = np.array([trial.mse for trial in trials])
+mean_mse = mses.mean()
+mse_consistency = ((mses - mean_mse) ** 2).mean()
 ```
 
 ### Value Summary
@@ -66,12 +81,13 @@ mse = ((r_theta - target_R) ** 2).mean()
 - **trial_id**: Unique timestamp for each trial
 - **fatigue_rating**: Self-reported, per session and per trial (if available)
 - **mse**: Shape-only mean squared error for each trial
+- **mse_consistency**: Mean squared error of the MSEs for all test trials
 - **raw_points_file**: Link to the JSON file with raw points
 - **session_id, created**: Session-level metadata
 
 ## Export Format
 - Each test trial: `circle-YYYYMMDD-HHMM.json` (raw points)
-- Session summary: `session-metadata.json` (metadata and MSEs)
+- Session summary: `session-metadata.json` (metadata, MSEs, and mse_consistency)
 
 ## Notes
 - Practice trials (first 5) are excluded from analysis and export.

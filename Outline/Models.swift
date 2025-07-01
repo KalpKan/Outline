@@ -116,4 +116,13 @@ struct Session: Identifiable, Codable {
     func exportTrials() -> [Trial] {
         return Array(trials.dropFirst(5))
     }
+    
+    // Mean squared error of the MSEs (consistency metric)
+    var mseConsistency: Double? {
+        let mses = exportTrials().compactMap { $0.mseValue }
+        guard mses.count > 1 else { return nil }
+        let mean = mses.reduce(0, +) / Double(mses.count)
+        let squaredDiffs = mses.map { pow($0 - mean, 2) }
+        return squaredDiffs.reduce(0, +) / Double(mses.count)
+    }
 } 
